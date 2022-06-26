@@ -28,11 +28,33 @@ equivalent to the 0 and 1 states in the bit.
 
 This notation with 'funny' brackets is called **ket notation**.
 
-### Quantum state
+## Quantum state
 
 The **quantum state of a qubit** is a vector in a 2-dimensional complex vector space.
+
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/69206952/175797308-54e2be33-4aad-4f7e-8515-0ce5e6933938.png" />
+
+</p>
 So, a general quantum state can be written as a linear combination of $\ket{0} \text{ and } \ket{1}$.
 Hence, we can write any quantum state as:
 
 $$ \alpha \ket{0} + \beta \ket{1} $$
 
+## Superposition
+
+'Superposition is just a fancy word for linear combination'. Thus, the equation above can be interpreted as a superposition of the states $\ket{0} \text{ and } \ket{1}$.
+
+## Amplitude
+
+The  $\alpha $ and  $\beta $ coefficients in the above equation are called amplitudes for the  $\ket{0} $ state and $\ket{1}$ state.
+
+### Normalization costraint
+
+We have the following constraint on the values of the amplitudes.
+
+$$ |\alpha|^2 + |\beta|^2 = 1$$
+
+Note: The  $\ket{0} $ is not the null vector, or zero vector.
+
+Note$^2$: The superposition doesn't mean that the a qubit is in the state  $\ket{0} $ and  $\ket{1} $ simultaneously.
