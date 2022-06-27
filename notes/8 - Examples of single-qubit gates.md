@@ -52,22 +52,23 @@ $$
 
 The already presented **X (NOT)** gate is
 
-$$ X = $$ \begin{bmatrix}
+$$ X = \begin{bmatrix}
 0 & 1 \\
 1 & 0 \end{bmatrix}
 $$
 
 And the **X** gate has two 'partners': **Y** and **Z** gates.
 
-$$ Y = $$ \begin{bmatrix}
+$$ Y = \begin{bmatrix}
 0 & -i \\
 i & 0 \end{bmatrix}
 $$
 
-$$ Z = $$ \begin{bmatrix}
+$$ Z = \begin{bmatrix}
 1 & 0 \\
 0 & -1 \end{bmatrix}
 $$
 
 They are, sometimes, called the Pauli sigma matrices, for historical reasons.
 They come up when you try and analyze properties like electron spin.
+
