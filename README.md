@@ -1,2 +1,2 @@
 # netsquid-study
-NetSquid tests, solutions for bugs and somethings about quantum theory
+Notes on quantum computing, tests with Netsquid library and solutions for bugs.
