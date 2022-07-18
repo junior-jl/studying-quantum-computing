@@ -40,3 +40,21 @@ always yield the same outcome.
 - Quantum teleportation can transmit a qubit without really using a physical carrier.
 
 - It does not allow for faster than light communication.
+
+## Quantum computer requirements
+
+1. A quantum computer must be scalable.
+2. It must be possible to initialise the qubits.
+3. Good qubits are needed, the quantum state cannot be lost.
+4. We need to have a universal set of quantum gates.
+5. We need to be able to measure all qubits.
+
+A billion qubits alone does not make a quantum computer. In order to do something practial with these qubits, we need to be able to control and read them, and all these qubits need to work in harmony according to your input.
+
+## Quantum internet
+
+- Composed of end nodes, switches, repeaters and control traffic.
+- An entangled state between two qubits is the essence of the power of a quantum internet.
+- Maximum coordination - qubits can be entangled at a very long distance, but when we make the same measurement on both qubits, they will give the same outcome.
+- Inherently private - when two qubits are maximally entangled, it is impossible for any other qubit to have a share of this entanglement.
+- More than two qubits can be entangled, but two qubits that are maximally entangled can not be entangled with other qubits. (?)
