@@ -58,3 +58,17 @@ A billion qubits alone does not make a quantum computer. In order to do somethin
 - Maximum coordination - qubits can be entangled at a very long distance, but when we make the same measurement on both qubits, they will give the same outcome.
 - Inherently private - when two qubits are maximally entangled, it is impossible for any other qubit to have a share of this entanglement.
 - More than two qubits can be entangled, but two qubits that are maximally entangled can not be entangled with other qubits. (?)
+
+## Securing your data
+
+### Factoring
+
+- There is a great asymmetry in multiplying and factoring: multiplying is easy, factoring is complicated.
+- This asymmetry is used in cryptography.
+- Shor's quantum factoring algorithm: an algorithm which makes factoring possible in reasonable time, something that is not possible on a classical computer.
+
+### Secure communication
+
+- One of the applications of a quantum internet is secure communication. Specifically, a quantum internet allows us to realize quantum key distribution. 
+- Practical cryptographic systems that are used in the real world nowadays use keys that are much shorter than the message. So they don't offer the ultimate guarantees of security. 
+- Qubits cannot be copied, and this is at the heart of quantum key distribution, which always allows us to make more key to secure communication.
