@@ -72,3 +72,17 @@ A billion qubits alone does not make a quantum computer. In order to do somethin
 - One of the applications of a quantum internet is secure communication. Specifically, a quantum internet allows us to realize quantum key distribution. 
 - Practical cryptographic systems that are used in the real world nowadays use keys that are much shorter than the message. So they don't offer the ultimate guarantees of security. 
 - Qubits cannot be copied, and this is at the heart of quantum key distribution, which always allows us to make more key to secure communication.
+
+## Quantum chemistry
+
+- Like factoring, Hamiltonian simulation can be performed on a quantum computer in polynomial, rather than exponential, time.
+- These simulations are currently performed using very large supercomputers.
+- Hamiltonian simulation will probably be the first application of a quantum computer. 
+- Hamiltonian simulation can be used, for instance, to create a new medication, materials that don't have electrical resistance and chemical compounds.
+
+## Blind quantum computing
+
+- A great application of a quantum internet is that it enables secure access to quantum computers in the cloud.
+- This is known as secure delegated quantum computing or blind quantum computing.
+- Neither the input data, nor the algorithm used need to be revealed in order to obtain the result.
+- You only need a small quantum terminal at home to use the big mainframe far away. 
