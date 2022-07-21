@@ -86,3 +86,33 @@ A billion qubits alone does not make a quantum computer. In order to do somethin
 - This is known as secure delegated quantum computing or blind quantum computing.
 - Neither the input data, nor the algorithm used need to be revealed in order to obtain the result.
 - You only need a small quantum terminal at home to use the big mainframe far away. 
+
+## Quantum computer applications
+### Linear equations
+
+- Linear equations are applied virtually everywhere in our daily life.
+- Linear equations are very useful because many complicated problems can be well approximated by systems of linear equations.
+- A quantum computer, when making use of the HHL algorithm, can solve linear systems more efficiently, and much faster than classical computers. But it has a lot of caveats:
+  - The solution vector is not yielded.
+  - Entries of the matrix need to be sparse.
+  - Robust invertibility.
+  - Preparation of the input vector is complicated.
+
+
+### Machine learning
+
+- Machine learning is the discipline of producing mathematical functions that replicate patterns from large amounts of data.
+- Many machine learning techniques rely on more basic tasks such as linear system solving for their functioning. These linear equations can be efficiently solved using the HHL algorithm.
+- The same caveats on linear equations solving apply here, especially the input data problem.
+
+### Other applications
+
+- Searching (Grover's algorithm)
+- Quantum approximate optimisation
+- Semidefinite programming
+- Matrix powers
+- Quantum annealing
+
+
+- Grover’s algorithm is a quantum algorithm to perform a search on an unstructured database.
+- There are many more possible applications for example optimization.
