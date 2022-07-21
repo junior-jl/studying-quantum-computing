@@ -116,3 +116,18 @@ A billion qubits alone does not make a quantum computer. In order to do somethin
 
 - Grover’s algorithm is a quantum algorithm to perform a search on an unstructured database.
 - There are many more possible applications for example optimization.
+
+## Applications of quantum internet
+
+### Distributed systems
+
+- A challenge in computing is to coordinate between different computers and different processors; a distributed system.
+- Distributed systems are already known in classical computer science, where people have created protocols that can coordinate between different processors, even when these processors are behaving randomly. 
+- The key to solving an agreement problem, which is basically a series of messages that the processors will exchange with each other, in order to solve this problem. This is commonly known as Byzantine agreement problem.
+- Quantum protocols can solve such tasks with a constant number of qubit rounds of communication, so a number of rounds that does not depend on how many processors there are within the network.
+
+### Other applications
+
+- Quantum communication has also shown to be very useful to solve cryptographic problems, e.g. secure identification and position verification.
+- Quantum communication is used to build up correlations in a network. Classical communication is still necessary to process the result and thus solve useful tasks.
+- All of these effects are due to two properties of entanglement, namely maximum coordination and inherent privacy.
