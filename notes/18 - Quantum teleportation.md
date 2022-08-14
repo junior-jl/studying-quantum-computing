@@ -23,7 +23,7 @@ as shown in the following table
 
 | Outcome | Equivalent | Operation | 
 |:--:|:--:|:--:|
-|$\alpha \ket{0} + \beta\ket{1}$|$\ket{\psi}$| I |
-|$\alpha \ket{1} + \beta\ket{0}$|X$\ket{\psi}$| X |
-|$\alpha \ket{0} - \beta\ket{1}$|Z$\ket{\psi}$| Z |
-|-$\alpha \ket{1} + \beta\ket{0}$|ZX$\ket{\psi}$| ZX |
+|$\alpha \ket{0} + \beta\ket{1}$ | $\ket{\psi}$| I |
+|$\alpha \ket{1} + \beta\ket{0}$ | X $\ket{\psi}$| X |
+|$\alpha \ket{0} - \beta\ket{1}$ | Z $\ket{\psi}$| Z |
+|- $\alpha \ket{1} + \beta\ket{0}$ | ZX $\ket{\psi}$| ZX |
