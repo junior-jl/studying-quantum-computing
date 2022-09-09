@@ -14,7 +14,7 @@
 
 ```py
 class No(object):
-    def __init__(self, id = '', taxa_minima= 0 , ruido_operacoes = 0, decoerencia = 0, geracao = 1, lat = 0, long = 0, end_node = False,
+    def __init__(self, id = '', taxa_minima = 0 , ruido_operacoes = 0, decoerencia = 0, geracao = 1, lat = 0, long = 0, end_node = False,
                  quantico = True, memoria = False):
         self.id = id
 
