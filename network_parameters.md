@@ -8,6 +8,7 @@
 - ruido_operacoes
 - decoerencia
 - geracao
+- destilaçao
 - lat (?)
 - long (?)
 
