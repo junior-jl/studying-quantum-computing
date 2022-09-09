@@ -35,6 +35,11 @@ class No(object):
 - ocupado
 - registro_swap
 
+## Netsquid
+
+- Modelo de delay (Q e C)
+- Modelo de ruído (Q e C)
+- Modelo de perdas (Q e C)
 ```py
 class Canal(object):
   def __init__(self, id, comprimento, quantico = True, unidade = 'km', ocupado = False, registro_swap = []):
