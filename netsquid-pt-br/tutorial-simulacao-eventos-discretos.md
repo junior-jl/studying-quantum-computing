@@ -1,3 +1,4 @@
+```python
 10.0: Evento ping! EntidadePong mediu |+> com probabilidade 0.50
 20.0: Evento pong! EntidadePing mediu |1> com probabilidade 0.50
 30.0: Evento ping! EntidadePong mediu |-> com probabilidade 0.50
@@ -59,4 +60,4 @@ Total quantum operations: 6
 Frequent quantum operations: MEASURE = 2; H = 2; CX = 2
 Max qstate size: 3 qubits
 Mean qstate size: 2.33 qubits
-
+```
