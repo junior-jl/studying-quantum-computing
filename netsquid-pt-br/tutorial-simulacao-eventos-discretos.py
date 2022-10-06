@@ -91,10 +91,10 @@ class EntidadePong(pydynaa.Entity):
         # Caso quiséssemos esperar e lidar somente com o primeiro evento do tipo podíamos
         # usar o método _wait_once()
 
-    def _lida_com_evento_ping(self, event):
+    def _lida_com_evento_ping(self, evento):
         # Função callback chamada pelo manipulador ping quando um evento ping é provocado
         # Event.source -> a entidade fonte que iniciou o evento
-        m, prob = ns.qubits.measure(event.source.qubit, observable=ns.X)
+        m, prob = ns.qubits.measure(evento.source.qubit, observable=ns.X)
         # A fonte do evento (EntidadePing) é usada para que a EntidadePong possa acessar
         # o qubit compartilhado
         labels_x = ("|+>", "|->")
@@ -111,6 +111,8 @@ pong.espera_por_ping(ping)
 # Criar um qubit e instruir a entidade ping a iniciar o processo
 q1, = ns.qubits.create_qubits(1)
 
+# TODO: entender isso q1, ??????
+
 # O jogo é iniciado, mas a simulação ainda não está rodando...
 ping.inicia(q1)
 # A entidade ping foi configurada para 'escutar' e reagir a eventos pong, a única diferença
@@ -126,3 +128,203 @@ print(estatisticas)
 # Podemos ver que a simulação realmente durou 91 nanossegundos e que exatamente 9 eventos foram
 # marcados e lidados. Houveram 9 operações quânticas, as medições, e o máximo tamanho de estado
 # quântico operado foi 1 qubit, como esperado.
+
+#### Exemplo simples de teleporte quântico
+
+# Primeiro, resetamos a linha do tempo da simulação, limpando qualquer evento e setando o 
+# tempo de simulação de volta a zero
+
+ns.sim_reset()
+
+# Agora definimos três entidades de simulação: Alice, Bob, e Charlie. Charlie será responsável
+# por gerar continuamente u mpar de qubits emaranhados (o estado de Bell |B00>), sendo um qubit
+# para Alice e o outro para Bob. Alice espera o seu qubit emaranhado chegar, ao chegar, ela 
+# emaranha seu próprio qubit com o que acabou de receber, mede ambos e envia as correções
+# clássicas para Bob. Bob irá simultaneamente esperar pelo qubit emaranhado de Charlie e as
+# correções clássicas de Alice. Para isso iremos usar expressões de evento (EventExpression)
+# Ver imagem: https://docs.netsquid.org/latest-release/_images/aafig-68b936f1a385af8661132617442f6cf318b973f5.svg
+
+class Charlie(pydynaa.Entity):
+    tipo_ev_pronto = pydynaa.EventType("QUBITS_PRONTOS", "Qubits emaranhados estão prontos.")
+    _tipo_ev_gerar = pydynaa.EventType("GERAR", "Gerar qubits emaranhados.")
+    periodo = 50.
+    atraso = 10.
+
+    def __init__(self):
+        # Inicializa Charlie emaranhando qubits após cada geração de evento
+        self.qubits_emaranhados = None
+        self._manipulador_geracao = pydynaa.EventHandler(self._emaranha_qubits)
+        self._wait(self._manipulador_geracao, entity=self,
+                   event_type=Charlie._tipo_ev_gerar)
+
+    def _emaranha_qubits(self, event):
+        # Função callback que emaranha qubits e marca um evento PRONTO
+        qb1, qb2 = ns.qubits.create_qubits(2)
+        # Gerar o estado de Bell a partir de uma porta Hadamard e uma CNOT
+        #         operate(qubits, operador)
+        ns.qubits.operate(qb1, ns.H)
+        ns.qubits.operate([qb1, qb2], ns.CNOT)
+        self.qubits_emaranhados = [qb1, qb2]
+        # Após a geração, marcar evento do tipo PRONTO após atraso
+        self._schedule_after(Charlie.atraso, Charlie.tipo_ev_pronto)
+        print(f"{ns.sim_time():.1f}: Charlie terminou de gerar emaranhamento!")
+        # Após anunciar que o par está pronto, marcar evento do tipo GERAR novamente
+        # para ocorrer depois de um certo período (aqui, 50 ns)
+        self._schedule_after(Charlie.periodo, Charlie._tipo_ev_gerar)
+        
+    def inicia(self):
+        # Começa a geração de emaranhamento
+        print(f"{ns.sim_time():.1f} Charlie iniciou a geração de emaranhamento.")
+        self._schedule_now(Charlie._tipo_ev_gerar)
+
+# Aqui foram definidos dois tipos de eventos: um privado usado para simular uma frequência
+# na geração de emaranhamento e um público usado para sinalizar a geração bem sucedida para
+# Alice e Bob. A função callback de _manipulador_geracao() marca um evento do tipo PRONTO
+# depois de um atraso e marca o próximo evento de geração
+
+# A classe entidade Alice define o evento público tipo_ev_pronto e privado _tipo_ev_teleporte
+# O primeiro comunica a Bob que suas correções estão prontas, o último é usado para simular
+# um atraso na operação de teleporte local de Alice.
+
+class Alice(pydynaa.Entity):
+    tipo_ev_pronto = pydynaa.EventType("CORRECOES_PRONTAS", "As correções estão prontas.")
+    _tipo_ev_teleporte = pydynaa.EventType("TELEPORTE", "Teleporta o qubit.")
+    atraso = 20.
+
+    def __init__(self, estado_teleporte):
+        # Inicializa Alice setando o estado de teleporte e esperando o teleporte
+        self.estado_teleporte = estado_teleporte
+        self.qb0 = None
+        self.qb1 = None
+        self.corrections = None
+        self._manipulador_teleporte = pydynaa.EventHandler(self._lide_com_teleporte)
+        self._wait(self._manipulador_teleporte, entity=self,
+                   event_type=Alice._tipo_ev_teleporte)
+
+    def espera_por_charlie(self, charlie):
+        # Configura Alice para esperar por um qubit emaranhado de Charlie
+        self._manipulador_qubit = pydynaa.EventHandler(self._lide_com_qubit)
+        self._wait(self._manipulador_qubit, entity=charlie,
+                   event_type=Charlie.tipo_ev_pronto)
+
+    def _lide_com_qubit(self, evento):
+        # Função callback que lida com a chegada de qubits emaranhados e marca teleporte
+        # Qubit 0 de Alice é o que deve ser teleportado para Bob
+        self.qb0, = ns.qubits.create_qubits(1, no_state = True)
+        # Qubit 1 de Alice é o primeiro do par de qubits emaranhados de Charlie
+        self.qb1 = evento.source.qubits_emaranhados[0]
+        #         assign_qstate(qubit, qrepr, [formalismo])
+        ns.qubits.assign_qstate([self.qb0], self.estado_teleporte)
+        self._schedule_after(Alice.atraso, Alice._tipo_ev_teleporte)
+        print(f"{ns.sim_time():.1f}: Alice recebeu o qubit emaranhado!")
+
+    def _lide_com_teleporte(self, evento):
+        # Função callback que faz o teleporte e marca um evento de correções prontas
+        # Alice emaranha seus qubits
+        ns.qubits.operate([self.qb0, self.qb1], ns.CNOT)
+        ns.qubits.operate(self.qb0, ns.H)
+        m0, __ = ns.qubits.measure(self.qb0)
+        m1, __ = ns.qubits.measure(self.qb1)
+        self.correcoes = [m0, m1]
+        self._schedule_now(Alice.tipo_ev_pronto)
+        print(f"{ns.sim_time():.1f}: Alice mediu qubits e está enviando correções.")
+
+
+# Bob deve esperar tanto pelo qubit emaranhado de Charlie e as correções de Alice, finalizando
+# a tarefa do teleporte aplicando as possíveis correções ao seu qubit local.
+
+class Bob(pydynaa.Entity):
+
+    def espera_por_teleporte(self, alice, charlie):
+        # Configura Bob para esperar pelo seu qubit emaranhado e as correções de Alice
+        # pydynaa.core.EventExpression([source], [event_type], [event_id])
+        expressao_ev_charlie_pronto = pydynaa.EventExpression(
+                source=charlie, event_type=Charlie.tipo_ev_pronto)
+        expressao_ev_alice_pronto = pydynaa.EventExpression(
+                source=alice, event_type=Alice.tipo_ev_pronto)
+        expressao_ev_ambos_prontos = expressao_ev_charlie_pronto & expressao_ev_alice_pronto
+        self._manipulador_teleporte = pydynaa.ExpressionHandler(self._lida_com_teleporte)
+        self._wait(self._manipulador_teleporte, expression=expressao_ev_ambos_prontos)
+
+    def _lida_com_teleporte(self, expressao_evento):
+        # Função callback que lida com mensagens de Alice e Charlie
+        # first_term = primeiro termo da expressão de evento
+        # atomic_source = a entidade fonte da expressão atômica
+        # Expressões podem ser atômicas ou compostas
+        # Uma expressão atômica descreve futuros eventos similarmente a um _wait():
+        # usando a fonte, tipo e id dos eventos, opcionalmente.
+        # Uma expressão composta combina duas expressões atômicas ou compostas com um
+        # AND ou OR lógico
+
+        # Pegando o segundo qubit de Charlie (first_term.atomic_source)
+        qubit = expressao_evento.first_term.atomic_source.qubits_emaranhados[1]
+        alice = expressao_evento.second_term.atomic_source
+        self._aplica_correcoes(qubit, alice.correcoes)
+
+    def _aplica_correcoes(self, qubit, correcoes):
+        # Aplica correções de teleporte e checa fidelidade
+        m0, m1 = correcoes
+        # Se [m0 m1]:
+        #   00: não faz nada
+        #   01: aplica porta X
+        #   10: aplica porta Z
+        #   11: aplica XZ
+        if m1:
+            ns.qubits.operate(qubit, ns.X)
+        if m0:
+            ns.qubits.operate(qubit, ns.Z)
+        #                      fidelity(qubits, estado_referencia, [squared(quadrado)])
+        fidelidade = ns.qubits.fidelity(qubit, alice.estado_teleporte, squared=True)
+        print(f"{ns.sim_time():.1f}: Bob recebeu o qubit emaranhado e correções!"
+                f" Fidelidade = {fidelidade:.3f}")
+
+# Vamos configurar a rede
+# Alice deve enviar o estado quântico |-> para Bob
+
+def configura_rede(alice, bob, charlie):
+    alice.espera_por_charlie(charlie)
+    bob.espera_por_teleporte(alice, charlie)
+    charlie.inicia()
+
+alice = Alice(estado_teleporte=ns.h1)
+bob = Bob()
+charlie = Charlie()
+
+configura_rede(alice, bob, charlie)
+estatisticas2 = ns.sim_run(end_time=100)
+print(estatisticas2)
+
+# Podemos ver que o máximo tamanho de estado quântico foi 3, ocorrendo quando Alice 
+# emaranha seu qubit com o qubit já emaranhado recebido de Charlie
+
+# Finalizando, vamos adicinoar ruído dependente do tempo ao qubit de Bob
+# Calcularemos a diferença de tempo entre a chegada do qubit de Bob e o tempo atual
+# de simulação e passaremos para a função delay_depolarize()
+
+class BobRuidoso(Bob):
+    taxa_depolar = 1e7 # taxa de depolarização dos qubits que esperam [Hz]
+
+    def _lide_com_teleporte(self, expressao_evento):
+        # Função callback que primeiro aplica ruído ao qubit antes das correções
+        expr_alice = expressao_evento.second_term
+        expr_charlie = expressão_evento.first_term
+        # Computa o tempo que o qubit recebido de Charlie esperou
+        atraso = ns.sim_time() - expr_charlie.triggered_time
+        # Aplice ruído quântico dependente de tempo ao qubit de Bob
+        qubit = expr_charlie.atomic_source.qubits_emaranhados[1]
+        ns.qubits.delay_depolarize(qubit, BobRuidoso.taxa_depolar, atraso)
+        # Aplica correções clássicas (como antes)
+        self._aplica_correcoes(qubit, expr_alice.atomic_source.correcoes)
+
+# Para visualizar imediatamente o efeito na fidelidade, trocaremos o formalismo para
+# matriz densidade
+# Resetando a simulação...
+ns.sim_reset()
+ns.set_qstate_formalism(ns.QFormalism.DM)
+
+alice = Alice(estado_teleporte=ns.h1)
+bob = BobRuidoso()
+charlie = Charlie()
+configura_rede(alice, bob, charlie)
+estatisticas3 = ns.sim_run(end_time=50)
+print(estatisticas3)
