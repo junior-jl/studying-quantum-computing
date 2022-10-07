@@ -1,14 +1,6 @@
 # Tutorial Netsquid - Simulação de eventos discretos
-# A ideia dessa seção é estender a simulação do teleporte 
-# com um modelo temporal usando a engine pydynaa para
-# simulação de eventos discretos
-
-def separador(tamanho = 50):
-    """Separador básico de texto para melhor visualização."""
-    print('*', end='')
-    for i in range(tamanho):
-        print('-', end='')
-    print('*')
+# A ideia dessa seção é estender a simulação do teleporte com um modelo temporal 
+# usando a engine pydynaa para simulação de eventos discretos
 
 # O pacote pyDynAA define classes que representam alguns conceitos essenciais:
 #   - entidades (Entity)
