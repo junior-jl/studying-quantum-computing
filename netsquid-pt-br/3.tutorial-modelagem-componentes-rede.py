@@ -29,6 +29,7 @@ def separador(tamanho = 50):
     print('*')
 
 import netsquid as ns
+import pydynaa
 from netsquid.components import Channel, QuantumChannel
 # Channel(nome, [delay], [comprimento], [modelos], 
 # [transmitir_itens_vazios], [propriedades], **kwargs)
@@ -191,3 +192,267 @@ print(f"Medição na posição 0 da memória (memq.measure(positions=0)):\n"\
 # Também é possível mudar a base de medição:
 print(f"Medição na posição 0 na base X (memq.measure(positions=0, observable=ops.X)):\n"\
       f" {memq.measure(positions=0, observable=ops.X)}")
+
+# Portas
+#   Para simular o jogo de ping pong quântico do tutorial passado, queremos que o qubit seja
+#   fisicamente transportado entre os dois jogadores usando canais, e que o qubit seja
+#   automaticamente transportado do canal para a memória quântica quando chegar.
+#   O canal e a memória quântica são componentes e todos os componentes compartilham a mesma
+#   interface de comunicação, as portas (Port).
+#   Checar imagem: https://docs.netsquid.org/latest-release/_images/ports_connect.png
+#   Os métodos send() e receive() usados anteriormente da classe Canal são métodos
+#   convenientes que usam as portas send e recv de um canal, respectivamente. Logo, ao invés
+#   de usar esses métodos, poderíamos fazer:
+separador()
+canal = Channel("CanalTutorial", delay=3)
+canal.ports['send'].tx_input("hello")
+ns.sim_run()
+x = canal.ports['recv'].rx_output()
+print(x)
+
+# Portas transmitem (TX) e recebem (RX) objetos mensagem (Message). Uma mensagem é composta
+# de uma lista de itens e um dicionário opcional de campos de metadados.
+# Além disso, portas sempre são atreladas a um componente, logo, há uma distinção entre:
+#   - tx_input() -> transmitir uma mensagem para dentro de um componente
+#   - tx_output() -> transmitir uma mensagem para fora de um componente
+#   - rx_output() -> receber uma mensagem saída de um componente
+#   - rx_input() -> receber uma mensagem entrada de um componente
+# A conexão entre duas portas pode ser feita pelo método connect(), o qual irá passar a 
+# saída transmitida de uma porta para a entrada recebida de outra, e vice-versa.
+# No jogo de PingPong, usamos put() para armazenar um qubit. Uma alternativa para isso
+# é enviar uma mensagem contendo uma lista de qubits para a porta qin da memória, ou uma
+# mensagem com um único qubit para uma porta específica qinX, onde X é o índice de uma posição
+# de memória específica. Quando essa porta for conectada à porta de recepção do canal, o qubit
+# que chegar será automaticamente armazenado.
+separador()
+print("Armazenando o qubit enviado pelo canal na memória por meio de portas...")
+canal.ports['recv'].connect(memq.ports['qin0'])
+qubit, = create_qubits(1)
+print(f"Qubit criado: {qubit}")
+canal.send(qubit)
+ns.sim_run()
+print(f"Posição de memória 0 da memória conectada ao canal pela porta qin0: {memq.peek(0)}")
+
+# Usando componentes e portas, vamos reescrever as entidades Ping e Pong, no entanto, agora
+# elas terão uma memória quântica cuja porta de saída está conectada à entrada de um canal
+# quântico. Assim, ao invés de esperarem por um evento ping ou pong, irão esperar a chegada
+# de um qubit na porta de entrada qin0 da memória quântica.
+
+from netsquid.components.component import Port
+from netsquid.qubits.qformalism import QFormalism
+class EntidadePing(pydynaa.Entity):
+    comprimento = 2e-3  # comprimento do canal [km]
+
+    def __init__(self):
+        # Cria uma memória e um canal quântico
+        self.memoriaq = QuantumMemory("MemoriaPing", num_positions=1)
+        self.canalq = QuantumChannel("CanalPing", length=self.comprimento,
+                                     models={"delay_model": FibreDelayModel()})
+        # Conectar a saída da memória à entrada do canal ping
+        self.memoriaq.ports["qout"].connect(self.canalq.ports["send"])
+        # Configura função callback para lidar com a entrada na porta qin0 da memória
+        # A transmissão de uma mensagem de entrada tx_input() marca um evento do tipo 
+        # evtype_input
+        self._wait(pydynaa.EventHandler(self._lida_com_qubit_entrada),
+                     entity=self.memoriaq.ports["qin0"], event_type=Port.evtype_input)
+        # notify_all_input = True -> sempre marca um evento de entrada quando essa porta
+        # é conectada, encaminhada ou vinculada
+        self.memoriaq.ports["qin0"].notify_all_input = True
+
+    def inicia(self, qubit):
+        # Começa o jogo fazendo do jogador ping enviar o primeiro qubit (ping)
+        self.canalq.send(qubit)
+
+    def espera_por_pong(self, outra_entidade):
+        # Configura essa entidade para colocar qubits que chegarem na memória quântica
+        # Conecta a porta de recepção (ponto de chegada) do canal da outra entidade a
+        # porta da sua posição zero da memória quântica
+        self.memoriaq.ports["qin0"].connect(outra_entidade.canalq.ports["recv"])
+
+    def _lida_com_qubit_entrada(self, evento):
+        # Função callback chamada pelo manipulador de pong quando um evento pong é provocado
+        [m], [prob] = self.memoriaq.measure(positions=[0], observable=ns.Z)
+        labels_z = ("|0>", "|1>")
+        print(f"{ns.sim_time():.1f}: Evento Pong! A EntidadePing mediu "
+                                      f"{labels_z[m]} com probabilidade {prob:.2f}")
+        self.memoriaq.pop(positions=[0])
+
+class EntidadePong(pydynaa.Entity):
+    comprimento = 2e-3  # comprimento do canal [km]
+
+    def __init__(self):
+        # Cria uma memória e um canal quântico
+        self.memoriaq = QuantumMemory("MemoriaPong", num_positions=1)
+        self.canalq = QuantumChannel("CanalPong", length=self.comprimento,
+                                     models={"delay_model": FibreDelayModel()})
+        # Conectar a saída da memória para a entrada do canal pong
+        self.memoriaq.ports["qout"].connect(self.canalq.ports["send"])
+        # Configura a função callback para ldiar com a entrada na memória quântica
+        self._wait(pydynaa.EventHandler(self._lida_com_qubit_entrada),
+                     entity=self.memoriaq.ports["qin0"], event_type=Port.evtype_input)
+        self.memoriaq.ports["qin0"].notify_all_input = True
+
+    def espera_por_ping(self, outra_entidade):
+        # Configura essa entidade para passar qubits recebidos para a memória quântica
+        self.memoriaq.ports["qin0"].connect(outra_entidade.canalq.ports["recv"])
+
+    def _lida_com_qubit_entrada(self, evento):
+        # Função callback chamada pelo manipulador de ping quando um evento ping é provocado
+        [m], [prob] = self.memoriaq.measure(positions=[0], observable=ns.X)
+        labels_x = ("|+>", "|->")
+        print(f"{ns.sim_time():.1f}: Evento ping! EntidadePong mediu "
+              f"{labels_x[m]} com probabilidade {prob:.2f}")
+        self.memoriaq.pop(positions=[0])
+
+# Podemos notar que as entidades são muito parecidas, e poderíamos ter escrito apenas uma classe
+# Mas, por motivos de clareza, foram definidas duas classes separadas.
+# A simulação fica:
+separador()
+print("Nova simulação do jogo de Ping Pong quântico")
+ns.sim_reset()
+ping = EntidadePing()
+pong = EntidadePong()
+ping.espera_por_pong(pong)
+pong.espera_por_ping(ping)
+# Cria um qubit e instrui a entidade ping a iniciar o processo
+qubit, = ns.qubits.create_qubits(1)
+ping.inicia(qubit)
+ns.set_random_state(seed=42)
+estatisticas = ns.sim_run(91)
+print(estatisticas)
+
+# Teleporte quântico utilizando componentes
+# Resetando a simulação e trocando o formalismo para matriz densidade para demonstrar os efeitos do
+# ruído na fidelidade final sem a necessidade de amostragem...
+ns.set_qstate_formalism(ns.QFormalism.DM)
+ns.sim_reset()
+
+# Alice e Bob agora possuem uma memória para armazenar e manipular seus qubits. Além disso, serão
+# inicializados com as portas send e receive do canal clássico que usam para trocar a informação
+# clássica sobre correções. 
+
+class Alice(pydynaa.Entity):
+    def __init__(self, estado_teleporte, canalc_porta_send):
+        self.estado_teleporte = estado_teleporte
+        self.canalc_porta_send = canalc_porta_send
+        self.memoriaq = QuantumMemory("MemoriaAlice", num_positions=2)
+        self._wait(pydynaa.EventHandler(self._lida_com_qubit_entrada),
+                   entity=self.memoriaq.ports["qin1"], event_type=Port.evtype_input)
+        self.memoriaq.ports["qin1"].notify_all_input = True
+
+    def _lida_com_qubit_entrada(self, evento):
+        # Função callback que faz o teleporte e marca um evento de correções prontas
+        q0, = ns.qubits.create_qubits(1, no_state=True)
+        # q0 -> Qubit de Alice com o estado a ser teleportado
+        ns.qubits.assign_qstate([q0], self.estado_teleporte)
+        self.memoriaq.put([q0], positions=[0])
+        separador()
+        print("Estado a ser teleportado")
+        print(self.memoriaq.peek(positions=[0])[0].qstate.qrepr)
+        # Emaranha os qubits nas posições 0 e 1 da memória
+        self.memoriaq.operate(ns.CNOT, positions=[0, 1])
+        self.memoriaq.operate(ns.H, positions=[0])
+        # Realiza a medição dos qubits, pega o retorno[0] -> lista de medições
+        # retorno[1] seria a lista de probabilidades
+        m0, m1 = self.memoriaq.measure(positions=[0, 1], observable=ns.Z,
+                                       discard=True)[0]
+        # Coloca na entrada da porta de transmissão as medições feitas nos qubits
+        # emaranhados q0 e q1
+        self.canalc_porta_send.tx_input([m0, m1])
+        separador()
+        print(f"{ns.sim_time():.1f}: Alice recebeu o qubit emaranhado, "
+              f"mediu os qubits e está enviando as correções!")
+        print(f"Correções enviadas -> {[m0, m1]}")
+        separador()
+
+
+class Bob(pydynaa.Entity):
+    taxa_depolar = 1e7  # taxa de despolarização dos qubits inativos [Hz]
+
+    def __init__(self, canalc_porta_recv):
+        modelo_ruido = DepolarNoiseModel(depolar_rate=self.taxa_depolar)
+        self.memoriaq = QuantumMemory("MemoriaBob", num_positions=1,
+                                      memory_noise_models=[modelo_ruido])
+        # Ligamos o manipulador de mensagens à porta de recepção do canal
+        # clássico ligado a Bob
+        canalc_porta_recv.bind_output_handler(self._lida_com_correcoes)
+
+    def _lida_com_correcoes(self, mensagem):
+        # Função callback que lida com mensagens de Alice e Charlie
+        m0, m1 = mensagem.items
+        if m1:
+            self.memoriaq.operate(ns.X, positions=[0])
+            separador()
+            print("Foi aplicada uma porta X na posição zero da memória de Bob!")
+        if m0:
+            self.memoriaq.operate(ns.Z, positions=[0])
+            separador()
+            print("Foi aplicada uma porta Z na posição zero da memória de Bob!")
+        qubit = self.memoriaq.pop(positions=[0])
+        fidelidade = ns.qubits.fidelity(qubit, ns.y0, squared=True)
+        separador()
+        print(f"{ns.sim_time():.1f}: Bob recebeu o qubit emaranhado e as correções!"
+              f" Fidelidade = {fidelidade:.3f}")
+        print(f"Qubit de Bob após aplicação das correções: "
+              f"{qubit[0].qstate.qrepr}")
+
+# Na simulação anterior, havia uma entidade Charlie que gerava o emaranhamento e enviava
+# os qubits a Alice e Bob, agora um novo componente irá substituir essa entidade: uma fonte
+# quântica (QSource), que será conectada a Alice e Bob por meio de canais quânticos.
+# Uma fonte quântica gera um ou mais qubits em estados específicos ou aleatoriamente amostrados,
+# neste último caso, é possível usar um objeto amostrador de estados (StateSampler).
+# Este objeto é inicializado com uma lista de estados e probabilidades. Um estado aleatório desta
+# lista pode ser amostrado pelo método sample(). Neste exemplo, sempre queremos o estado |B00>...
+from netsquid.qubits.state_sampler import StateSampler
+import netsquid.qubits.ketstates as ks
+amostrador_estados = StateSampler([ks.b00], [1.0])
+
+from netsquid.components.qsource import QSource, SourceStatus
+# Queremos enviar os dois qubits gerados para duas direções diferentes, logo, especificamos duas
+# portas dde saída no construtor da fonte com os nomes padrão qout0 e qout1
+fonte_charlie = QSource("Charlie", amostrador_estados, frequency=100, num_ports=2,
+                        timing_model=FixedDelayModel(delay=50),
+                        status=SourceStatus.INTERNAL)
+
+# A fonte quântica pode estar em um dos três modos especificados por SourceStatus:
+#   - OFF (padrão)
+#   - INTERNAL
+#   - EXTERNAL
+# No modo interno, a fonte opera usando seu componente clock interno (Clock), que pode ser
+# inicializado usando os parâmetros frequency ou timing_model.
+# No modo externo, a fonte espera ser externamente provocada recebendo alguma mensagem na sua porta
+# gatilho (trigger). Também é possível chamar trigger() manualmente para emular uma mensagem
+# chegando na porta. No exemplo acima, escolhemos usar o clock interno com um delay de 50ns
+# (frequência de 20 GHz).
+# Para configurar a rede, conectamos as portas de saída da fonte a dois canais quânticos
+# unilaterais, os quais serão conectados às entradas das memórias quânticas de Alice e Bob.
+
+def configura_rede(alice, bob, fonteq, comprimento=4e-3):
+    canalq_c_para_a = QuantumChannel("Charlie->Alice", length=comprimento / 2,
+                                     models={"delay_model": FibreDelayModel()})
+    canalq_c_para_b = QuantumChannel("Charlie->Bob", length=comprimento / 2,
+                                     models={"delay_model": FibreDelayModel()})
+    fonteq.ports["qout0"].connect(canalq_c_para_a.ports["send"])
+    fonteq.ports["qout1"].connect(canalq_c_para_b.ports["send"])
+    alice.memoriaq.ports["qin1"].connect(canalq_c_para_a.ports["recv"])
+    bob.memoriaq.ports["qin0"].connect(canalq_c_para_b.ports["recv"])
+
+# Agora podemos criar as entidades Alice e Bob juntas com um canal clássico entre elas, e chamar
+# o configurador de rede
+separador()
+print("Simulação do teleporte com componentes e portas")
+separador()
+from netsquid.components import ClassicalChannel
+canalc = ClassicalChannel("CanalC", length=4e-3,
+                          models={"delay_model": FibreDelayModel()})
+alice = Alice(estado_teleporte=ns.y0, canalc_porta_send=canalc.ports["send"])
+bob = Bob(canalc_porta_recv=canalc.ports["recv"])
+separador()
+print("Posição zero da memória de Bob antes da simulação")
+print(bob.memoriaq.peek(positions=[0]))
+separador()
+configura_rede(alice, bob, fonte_charlie)
+estatisticas = ns.sim_run(end_time=100)
+
+# Por fim, podemos notar uma importante diferença em relação ao tutorial passado: o ruído
+# é aplicado automaticamente pelas memórias quânticas.
