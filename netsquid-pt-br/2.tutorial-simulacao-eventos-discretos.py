@@ -103,7 +103,8 @@ pong.espera_por_ping(ping)
 # Criar um qubit e instruir a entidade ping a iniciar o processo
 q1, = ns.qubits.create_qubits(1)
 
-# TODO: entender isso q1, ??????
+# A função create_qubits retorna uma lista de qubits, por conta disso a sintaxe acima
+# "q1, = " faz com que à variável q1 seja atribuído o valor de índice zero da lista.
 
 # O jogo é iniciado, mas a simulação ainda não está rodando...
 ping.inicia(q1)
