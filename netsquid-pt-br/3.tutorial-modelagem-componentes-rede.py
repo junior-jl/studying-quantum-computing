@@ -455,4 +455,5 @@ configura_rede(alice, bob, fonte_charlie)
 estatisticas = ns.sim_run(end_time=100)
 
 # Por fim, podemos notar uma importante diferença em relação ao tutorial passado: o ruído
-# é aplicado automaticamente pelas memórias quânticas.
+# é aplicado automaticamente pelas memórias quânticas
+
